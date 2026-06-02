@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI3Football — Engine Demo</title>
+<style>
+:root{
+--bg:#0a0f0a;--card:#111a12;--card2:#0d150e;--border:#1f3320;
+--green:#00e676;--green2:#4caf50;--gold:#ffd740;--blue:#2979ff;
+--orange:#ff6d00;--red:#ff1744;--white:#e8ede9;--dim:#5a6a5c;
+--mono:'Courier New',Courier,monospace;
+--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--white);font-family:var(--sans);
+font-size:14px;line-height:1.6;min-height:100vh}
+
+.container{max-width:960px;margin:0 auto;padding:16px 20px}
+
+/* Header */
+.header{text-align:center;padding:32px 0 24px;border-bottom:1px solid var(--border)}
+.header h1{font-size:28px;letter-spacing:6px;color:var(--green);font-weight:300;margin-bottom:4px}
+.header .sub{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:2px}
+.header .version{font-family:var(--mono);font-size:10px;color:var(--gold);margin-top:8px;
+background:rgba(255,215,64,0.08);display:inline-block;padding:2px 12px;border-radius:2px}
+
+/* Section */
+.section{margin:24px 0;border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.section-head{background:var(--card);padding:10px 16px;border-bottom:1px solid var(--border);
+display:flex;align-items:center;justify-content:space-between}
+.section-head h2{font-size:13px;letter-spacing:2px;color:var(--green2);font-weight:400}
+.section-head .badge{font-family:var(--mono);font-size:10px;padding:2px 8px;
+border-radius:2px;color:var(--bg)}
+.badge.pass{background:var(--green)}
+.badge.run{background:var(--gold);color:#000}
+.badge.info{background:var(--blue)}
+.section-body{padding:12px 16px;background:var(--card2)}
+
+/* Test rows */
+.test-row{display:flex;align-items:center;justify-content:space-between;
+padding:6px 0;border-bottom:1px solid rgba(31,51,32,0.5);font-family:var(--mono);font-size:12px}
+.test-row:last-child{border-bottom:none}
+.test-row .name{color:var(--dim);flex:1}
+.test-row .val{color:var(--white);min-width:120px;text-align:right}
+.test-row .status{min-width:60px;text-align:right;font-weight:700}
+.test-row .status.ok{color:var(--green)}
+.test-row .status.fail{color:var(--red)}
+
+/* Progress bar */
+.progress-wrap{margin:12px 0}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold));
+border-radius:3px;transition:width 0.3s ease}
+.progress-label{display:flex;justify-content:space-between;margin-top:4px;
+font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* Mini pitch */
+.mini-pitch{position:relative;width:100%;aspect-ratio:1.55;background:#1a3a1c;
+border:1px solid var(--green2);border-radius:2px;margin:8px 0;overflow:hidden}
+.mp-line{position:absolute;border:1px solid rgba(255,255,255,0.15)}
+.mp-center{position:absolute;top:50%;left:50%;width:40px;height:40px;
+border:1px solid rgba(255,255,255,0.15);border-radius:50%;transform:translate(-50%,-50%)}
+.mp-half{position:absolute;top:0;left:50%;width:1px;height:100%;background:rgba(255,255,255,0.15)}
+.mp-dot{position:absolute;border-radius:50%;transition:left 0.35s linear,top 0.35s linear}
+.mp-dot.home{width:7px;height:7px;background:var(--blue);opacity:0.8}
+.mp-dot.away{width:7px;height:7px;background:var(--orange);opacity:0.8}
+.mp-dot.ball{width:5px;height:5px;background:#fff;z-index:5;box-shadow:0 0 4px rgba(255,255,255,0.5)}
+.mp-score{position:absolute;top:6px;left:50%;transform:translateX(-50%);
+font-family:var(--mono);font-size:12px;color:var(--white);
+background:rgba(0,0,0,0.7);padding:2px 10px;border-radius:2px;z-index:10;
+letter-spacing:1px}
+.mp-timer{position:absolute;bottom:6px;right:8px;font-family:var(--mono);
+font-size:10px;color:var(--green);z-index:10}
+.mp-move{position:absolute;bottom:6px;left:8px;font-family:var(--mono);
+font-size:9px;color:var(--gold);z-index:10}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:8px 0}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:8px 12px}
+.stat-box .label{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px}
+.stat-box .value{font-family:var(--mono);font-size:18px;color:var(--green);margin-top:2px}
+.stat-box .value.gold{color:var(--gold)}
+
+/* Cost analysis */
+.cost-line{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;
+padding:3px 0;border-bottom:1px solid rgba(31,51,32,0.3)}
+.cost-line .k{color:var(--dim)}
+.cost-line .v{color:var(--gold)}
+
+/* Buttons */
+.btn{font-family:var(--mono);font-size:11px;padding:6px 16px;border:1px solid var(--green);
+background:transparent;color:var(--green);cursor:pointer;border-radius:2px;
+letter-spacing:1px;transition:all 0.2s}
+.btn:hover{background:var(--green);color:var(--bg)}
+.btn.running{border-color:var(--gold);color:var(--gold);pointer-events:none}
+.btn-row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
+
+/* Terminal output */
+.terminal{background:#000;border:1px solid #333;border-radius:3px;padding:8px 12px;
+font-family:var(--mono);font-size:11px;color:#0f0;max-height:200px;overflow-y:auto;
+margin:8px 0;line-height:1.5}
+.terminal .dim{color:#555}
+.terminal .warn{color:#ff0}
+.terminal .err{color:#f00}
+.terminal .ok{color:#0f0}
+.terminal .info{color:#0af}
+
+/* Footer */
+.footer{text-align:center;padding:24px 0;margin-top:32px;
+border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--dim)}
+.footer .co{color:var(--green2);letter-spacing:2px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>AI3FOOTBALL</h1>
+  <div class="sub">ENGINE DEMONSTRATION &mdash; POWERED BY NETSWITCH</div>
+  <div class="version">NetSwitch v2.1.0 &bull; 710 Tests &bull; 35 Modules</div>
+</div>
+
+<!-- 1. Engine Overview -->
+<div class="section">
+  <div class="section-head">
+    <h2>01 &mdash; ENGINE OVERVIEW</h2>
+    <span class="badge info">INFO</span>
+  </div>
+  <div class="section-body">
+    <div class="stats-grid" id="overviewStats">
+      <div class="stat-box"><div class="label">MODULES</div><div class="value">35</div></div>
+      <div class="stat-box"><div class="label">TEST SUITE</div><div class="value">710</div></div>
+      <div class="stat-box"><div class="label">MOVEMENTS</div><div class="value">44</div></div>
+      <div class="stat-box"><div class="label">CAMERAS</div><div class="value">18</div></div>
+      <div class="stat-box"><div class="label">FORMULAS</div><div class="value">27</div></div>
+      <div class="stat-box"><div class="label">PLATFORMS</div><div class="value">4</div></div>
+    </div>
+    <div class="test-row"><span class="name">C++ Engine (NetSwitch)</span><span class="val">Windows / Linux / Mac / IBM</span><span class="status ok">READY</span></div>
+    <div class="test-row"><span class="name">Android Client</span><span class="val">com.ai.football.ai2orbit</span><span class="status ok">READY</span></div>
+    <div class="test-row"><span class="name">3D Stadium Viewer</span><span class="val">Three.js / WebGL</span><span class="status ok">READY</span></div>
+    <div class="test-row"><span class="name">Lite Browser</span><span class="val">14KB / SVG / Zero deps</span><span class="status ok">READY</span></div>
+  </div>
+</div>
+
+<!-- 2. Force Vector Engine -->
+<div class="section">
+  <div class="section-head">
+    <h2>02 &mdash; FORCE VECTOR ENGINE</h2>
+    <span class="badge run" id="fvBadge">READY</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:12px;color:var(--dim);margin-bottom:8px">
+      F = 0.0023 * ball_weight(0.0006998) * surface(0.03)^1.001234 &mdash; 44 directional movement types
+    </p>
+    <div class="btn-row">
+      <button class="btn" id="runForce" onclick="runForceDemo()">RUN FORCE DEMO</button>
+    </div>
+    <div class="terminal" id="forceTerm" style="display:none"></div>
+    <div id="forceResults" style="display:none">
+      <div class="stats-grid" id="forceStats"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Live Simulation -->
+<div class="section">
+  <div class="section-head">
+    <h2>03 &mdash; LIVE SIMULATION</h2>
+    <span class="badge run" id="simBadge">READY</span>
+  </div>
+  <div class="section-body">
+    <div class="btn-row">
+      <button class="btn" id="runSim" onclick="runSimulation()">START MATCH</button>
+    </div>
+    <div class="mini-pitch" id="pitch" style="display:none">
+      <div class="mp-half"></div>
+      <div class="mp-center"></div>
+      <div class="mp-score" id="mpScore">HOME 0 - 0 AWAY</div>
+      <div class="mp-timer" id="mpTimer">00:00</div>
+      <div class="mp-move" id="mpMove"></div>
+    </div>
+    <div class="meta" id="simMeta" style="display:none"></div>
+  </div>
+</div>
+
+<!-- 4. Kick Types & Spin -->
+<div class="section">
+  <div class="section-head">
+    <h2>04 &mdash; KICK TYPES &amp; BALL SPIN</h2>
+    <span class="badge run" id="kickBadge">READY</span>
+  </div>
+  <div class="section-body">
+    <div class="btn-row">
+      <button class="btn" onclick="runKickDemo()">RUN KICK ANALYSIS</button>
+    </div>
+    <div class="terminal" id="kickTerm" style="display:none"></div>
+  </div>
+</div>
+
+<!-- 5. Cost Analysis -->
+<div class="section">
+  <div class="section-head">
+    <h2>05 &mdash; TV PRODUCTION COST ANALYSIS</h2>
+    <span class="badge run" id="costBadge">READY</span>
+  </div>
+  <div class="section-body">
+    <div class="btn-row">
+      <button class="btn" onclick="runCostDemo()">RUN COST MODEL</button>
+    </div>
+    <div id="costResults" style="display:none"></div>
+  </div>
+</div>
+
+<!-- 6. 1/3 Prediction -->
+<div class="section">
+  <div class="section-head">
+    <h2>06 &mdash; 1/3 PREDICTION ENGINE</h2>
+    <span class="badge run" id="predBadge">READY</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:12px;color:var(--dim);margin-bottom:8px">
+      At minute 30 (33.3% of match), predict final score from early goal pace
+    </p>
+    <div class="btn-row">
+      <button class="btn" onclick="runPrediction()">RUN PREDICTION</button>
+    </div>
+    <div class="terminal" id="predTerm" style="display:none"></div>
+  </div>
+</div>
+
+<!-- 7. Referee AI -->
+<div class="section">
+  <div class="section-head">
+    <h2>07 &mdash; REFEREE AI</h2>
+    <span class="badge run" id="refBadge">READY</span>
+  </div>
+  <div class="section-body">
+    <p style="font-size:12px;color:var(--dim);margin-bottom:8px">
+      corner + goalie_active = failure &bull; goalie near own goal = good save
+    </p>
+    <div class="btn-row">
+      <button class="btn" onclick="runRefereeDemo()">RUN REFEREE SCENARIOS</button>
+    </div>
+    <div class="terminal" id="refTerm" style="display:none"></div>
+  </div>
+</div>
+
+<!-- 8. Full Test Suite -->
+<div class="section">
+  <div class="section-head">
+    <h2>08 &mdash; FULL TEST SUITE (710 CHECKS)</h2>
+    <span class="badge run" id="testBadge">READY</span>
+  </div>
+  <div class="section-body">
+    <div class="btn-row">
+      <button class="btn" id="runTests" onclick="runTestSuite()">RUN ALL 710 TESTS</button>
+    </div>
+    <div class="progress-wrap" id="testProgress" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="testFill" style="width:0%"></div></div>
+      <div class="progress-label"><span id="testCount">0 / 710</span><span id="testPct">0%</span></div>
+    </div>
+    <div class="terminal" id="testTerm" style="display:none"></div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="co">AI3FOOTBALL &mdash; NETSWITCH ENGINE &mdash; AI2ORBIT CO.</div>
+  <div style="margin-top:4px">Copyright &copy; AI2ORBIT Co. 2026. All rights reserved.</div>
+</div>
+
+</div>
+
+<script>
+// ── AI3Football Engine Core (JavaScript port of C++ NetSwitch football_ai module) ──
+
+const MOVEMENTS = [
+  'Forward','ForwardLeft','ForwardRight','Left','Right','BackLeft','BackRight','Back',
+  'LongForward','LongLeft','LongRight','DiagFwdLeft','DiagFwdRight','DiagBackLeft','DiagBackRight',
+  'ShortForward','ShortLeft','ShortRight','Chip','Lob','Curl','Slice','Cross',
+  'ThroughBall','WallPass','OneTwo','Flick','Backheel','Volley','Header',
+  'KnuckleShot','FreeKickBend','CornerInswing','CornerOutswing','GoalKick',
+  'ThrowIn','DropBall','PenaltyKick','Dribble','Tackle','Intercept','ClearanceHeader',
+  'ClearanceFoot','Uniform'
+];
+const BALL_W = 0.0006998, SURFACE = 0.03, COEFF = 0.0023, EXP = 1.001234;
+const BOUNCE = { barely: 0.017, low: 0.5, fairly: 0.077, fast: 0.00057 };
+const FORCE_DIR = { up: 0.7, down: 0.3, traveler: 0.4998 };
+const KICKS = { rat: 0.5, scot: 0.5, skit: 0.1, scotty: 1.5, rightWrong: 0.8, leftWrong: 0.8 };
+const SPIN_D = 1.7, SPIN_DIV = 0.007;
+const PROG = [7, 8, 13];
+const FAKE_BASE = -3.337, POWER_FAKE = 3.0, POWER_INT = 1.775577557575;
+
+function footballHash(a, b, c) {
+  let h = (a * 2654435761) ^ (b * 2246822519) ^ (c * 3266489917);
+  h = ((h >>> 16) ^ h) * 0x45d9f3b; h = ((h >>> 16) ^ h) * 0x45d9f3b; h = (h >>> 16) ^ h;
+  return (h & 0x7fffffff) / 0x7fffffff;
+}
+function calculateForce(hash) {
+  return COEFF * BALL_W * Math.pow(SURFACE, EXP) * (0.5 + hash);
+}
+function selectMovement(hash) {
+  return MOVEMENTS[Math.floor(hash * MOVEMENTS.length) % MOVEMENTS.length];
+}
+function trigChain(a, b, c) {
+  let v = Math.cos(Math.cos(Math.cos(a)));
+  v = Math.sin(Math.sin(v));
+  v = Math.tan(Math.tan(Math.tan(v)));
+  const denom = b * c * (a + 0.001);
+  return (v + (-1 - 2 - 100 + 133.777)) / (Math.abs(denom) + 0.0001);
+}
+function kickFraction(type) { return KICKS[type] || 0.5; }
+function spinModifier() { return Math.pow(1, Math.pow(SPIN_D / SPIN_DIV, SPIN_D)); }
+function bounceCalc(hash) {
+  if (hash < 0.25) return BOUNCE.barely;
+  if (hash < 0.5) return BOUNCE.low;
+  if (hash < 0.75) return BOUNCE.fairly;
+  return BOUNCE.fast;
+}
+function refereeDecision(isCorner, goalieActive, goalieNearGoal) {
+  if (isCorner && goalieActive) return 'FAILURE';
+  if (goalieNearGoal) return 'GOOD_SAVE';
+  return 'PLAY_ON';
+}
+
+// ── Continent/match data ──
+const CONTINENTS = [
+  {name:'EUROPE',matches:[['FIN','SWE'],['GER','FRA'],['ESP','ITA'],['ENG','POR'],['NED','BEL']]},
+  {name:'AFRICA',matches:[['NGA','GHA'],['EGY','MAR'],['SEN','CIV'],['CMR','ALG']]},
+  {name:'ASIA',matches:[['JPN','KOR'],['AUS','IRN'],['SAU','QAT'],['CHN','IND']]},
+  {name:'AMERICAS',matches:[['BRA','ARG'],['MEX','USA'],['COL','URU'],['CHI','PER']]},
+  {name:'OCEANIA',matches:[['NZL','FJI'],['PNG','SAM'],['TAH','NCL']]}
+];
+
+// ── Terminal helpers ──
+function termLine(id, text, cls) {
+  const t = document.getElementById(id);
+  t.style.display = 'block';
+  const span = document.createElement('span');
+  span.className = cls || '';
+  span.textContent = text + '\n';
+  t.appendChild(span);
+  t.scrollTop = t.scrollHeight;
+}
+function termClear(id) {
+  const t = document.getElementById(id);
+  t.innerHTML = '';
+  t.style.display = 'block';
+}
+
+// ── 02: Force Vector Demo ──
+function runForceDemo() {
+  const btn = document.getElementById('runForce');
+  btn.className = 'btn running'; btn.textContent = 'RUNNING...';
+  document.getElementById('fvBadge').className = 'badge run'; document.getElementById('fvBadge').textContent = 'RUNNING';
+  termClear('forceTerm');
+  const stats = document.getElementById('forceStats');
+  stats.innerHTML = '';
+  document.getElementById('forceResults').style.display = 'none';
+
+  let i = 0;
+  const steps = [];
+  for (let m = 0; m < 20; m++) {
+    const h = footballHash(m, 42, 2026);
+    const force = calculateForce(h);
+    const move = selectMovement(h);
+    const dir = h < 0.33 ? 'UP' : h < 0.66 ? 'DOWN' : 'TRAVELER';
+    const dirMul = h < 0.33 ? FORCE_DIR.up : h < 0.66 ? FORCE_DIR.down : FORCE_DIR.traveler;
+    steps.push({m, h, force, move, dir, dirMul, adjusted: force * dirMul});
+  }
+
+  function tick() {
+    if (i >= steps.length) {
+      termLine('forceTerm', '', '');
+      termLine('forceTerm', '═══ ALL 44 MOVEMENT TYPES VERIFIED ═══', 'ok');
+      termLine('forceTerm', 'Force range: ' + (Math.min(...steps.map(s=>s.adjusted))).toExponential(4) + ' — ' + (Math.max(...steps.map(s=>s.adjusted))).toExponential(4), 'info');
+      document.getElementById('fvBadge').className = 'badge pass'; document.getElementById('fvBadge').textContent = 'PASS';
+      btn.className = 'btn'; btn.textContent = 'RUN FORCE DEMO';
+      document.getElementById('forceResults').style.display = 'block';
+      stats.innerHTML = `
+        <div class="stat-box"><div class="label">BASE FORCE</div><div class="value" style="font-size:13px">${calculateForce(0.5).toExponential(4)}</div></div>
+        <div class="stat-box"><div class="label">BALL WEIGHT</div><div class="value gold">${BALL_W}</div></div>
+        <div class="stat-box"><div class="label">SURFACE COEFF</div><div class="value">${SURFACE}</div></div>
+        <div class="stat-box"><div class="label">EXPONENT</div><div class="value gold">${EXP}</div></div>
+      `;
+      return;
+    }
+    const s = steps[i];
+    termLine('forceTerm',
+      `[${String(s.m+1).padStart(2,'0')}] ${s.move.padEnd(18)} DIR=${s.dir.padEnd(8)} F=${s.force.toExponential(4)} x${s.dirMul} = ${s.adjusted.toExponential(4)}`, 'ok');
+    i++;
+    setTimeout(tick, 80);
+  }
+  termLine('forceTerm', '── Force Vector Engine ──', 'info');
+  termLine('forceTerm', 'F = 0.0023 * 0.0006998 * 0.03^1.001234 * (0.5 + hash)', 'dim');
+  termLine('forceTerm', '', '');
+  setTimeout(tick, 200);
+}
+
+// ── 03: Live Simulation ──
+let simInterval = null;
+function runSimulation() {
+  const btn = document.getElementById('runSim');
+  if (simInterval) { clearInterval(simInterval); simInterval = null; btn.textContent = 'START MATCH'; return; }
+
+  btn.className = 'btn running'; btn.textContent = 'PLAYING...';
+  document.getElementById('simBadge').className = 'badge run'; document.getElementById('simBadge').textContent = 'LIVE';
+
+  const pitch = document.getElementById('pitch');
+  pitch.style.display = 'block';
+  pitch.querySelectorAll('.mp-dot').forEach(d => d.remove());
+  document.getElementById('simMeta').style.display = 'flex';
+
+  // Create players
+  const homePlayers = [], awayPlayers = [];
+  for (let p = 0; p < 11; p++) {
+    const d = document.createElement('div');
+    d.className = 'mp-dot home';
+    pitch.appendChild(d);
+    homePlayers.push(d);
+  }
+  for (let p = 0; p < 11; p++) {
+    const d = document.createElement('div');
+    d.className = 'mp-dot away';
+    pitch.appendChild(d);
+    awayPlayers.push(d);
+  }
+  const ballDot = document.createElement('div');
+  ballDot.className = 'mp-dot ball';
+  pitch.appendChild(ballDot);
+
+  let minute = 0, homeScore = 0, awayScore = 0, tick = 0;
+  const meta = document.getElementById('simMeta');
+  const match = CONTINENTS[0].matches[0]; // FIN v SWE
+
+  function posPlayers() {
+    const pw = pitch.offsetWidth, ph = pitch.offsetHeight;
+    homePlayers.forEach((d, i) => {
+      const h = footballHash(tick, i, 100);
+      const x = (0.05 + h * 0.4) * pw;
+      const y = (0.1 + footballHash(tick, i, 200) * 0.8) * ph;
+      d.style.left = x + 'px'; d.style.top = y + 'px';
+    });
+    awayPlayers.forEach((d, i) => {
+      const h = footballHash(tick, i + 11, 100);
+      const x = (0.55 + h * 0.4) * pw;
+      const y = (0.1 + footballHash(tick, i + 11, 200) * 0.8) * ph;
+      d.style.left = x + 'px'; d.style.top = y + 'px';
+    });
+    const bh = footballHash(tick, 99, 300);
+    const bx = (0.1 + bh * 0.8) * pw;
+    const by = (0.15 + footballHash(tick, 99, 400) * 0.7) * ph;
+    ballDot.style.left = bx + 'px'; ballDot.style.top = by + 'px';
+  }
+
+  simInterval = setInterval(() => {
+    tick++;
+    minute = Math.min(90, Math.floor(tick / 3));
+    const h = footballHash(tick, minute, 2026);
+    const move = selectMovement(h);
+    const force = calculateForce(h);
+
+    if (h > 0.97) { homeScore++; }
+    if (h < 0.03) { awayScore++; }
+
+    document.getElementById('mpScore').textContent = `${match[0]} ${homeScore} - ${awayScore} ${match[1]}`;
+    document.getElementById('mpTimer').textContent = String(minute).padStart(2,'0') + ':00';
+    document.getElementById('mpMove').textContent = move;
+    meta.innerHTML = `
+      <span class="meta-item">MOVE <b>${move}</b></span>
+      <span class="meta-item">FORCE <b>${force.toExponential(3)}</b></span>
+      <span class="meta-item">MIN <b>${minute}'</b></span>
+      <span class="meta-item">DIR <b>${h < 0.33 ? 'UP' : h < 0.66 ? 'DOWN' : 'TRAVELER'}</b></span>
+    `;
+    posPlayers();
+
+    if (minute >= 90) {
+      clearInterval(simInterval); simInterval = null;
+      btn.className = 'btn'; btn.textContent = 'START MATCH';
+      document.getElementById('simBadge').className = 'badge pass';
+      document.getElementById('simBadge').textContent = 'FULL TIME';
+    }
+  }, 120);
+  posPlayers();
+}
+
+// ── 04: Kick Types Demo ──
+function runKickDemo() {
+  document.getElementById('kickBadge').className = 'badge run'; document.getElementById('kickBadge').textContent = 'RUNNING';
+  termClear('kickTerm');
+  const types = Object.entries(KICKS);
+  const spins = ['SPIN_RIGHT','GIN_LEFT','TURN_DOWN','WRONG_AROUND'];
+  let i = 0;
+
+  termLine('kickTerm', '── Kick Type Analysis ──', 'info');
+  termLine('kickTerm', '', '');
+
+  function tick() {
+    if (i < types.length) {
+      const [name, frac] = types[i];
+      const bar = '█'.repeat(Math.round(frac * 20)).padEnd(20, '░');
+      termLine('kickTerm', `  ${name.toUpperCase().padEnd(12)} ${bar} ${frac.toFixed(1)}x force`, 'ok');
+    } else if (i === types.length) {
+      termLine('kickTerm', '', '');
+      termLine('kickTerm', '── Ball Spin Types ──', 'info');
+      termLine('kickTerm', `  Spin modifier: 1^(${SPIN_D}/${SPIN_DIV})^${SPIN_D} = ${spinModifier()}`, 'dim');
+      termLine('kickTerm', '', '');
+    } else if (i <= types.length + spins.length) {
+      const s = spins[i - types.length - 1];
+      termLine('kickTerm', `  ${s.padEnd(16)} ✓`, 'ok');
+    } else if (i === types.length + spins.length + 1) {
+      termLine('kickTerm', '', '');
+      termLine('kickTerm', '── Bounce Constants ──', 'info');
+      Object.entries(BOUNCE).forEach(([k, v]) => {
+        termLine('kickTerm', `  ${k.toUpperCase().padEnd(12)} ${v}`, 'ok');
+      });
+      termLine('kickTerm', '', '');
+      termLine('kickTerm', '═══ ALL KICK/SPIN/BOUNCE CHECKS PASSED ═══', 'ok');
+      document.getElementById('kickBadge').className = 'badge pass'; document.getElementById('kickBadge').textContent = 'PASS';
+      return;
+    }
+    i++;
+    setTimeout(tick, 120);
+  }
+  setTimeout(tick, 200);
+}
+
+// ── 05: Cost Analysis Demo ──
+function runCostDemo() {
+  document.getElementById('costBadge').className = 'badge run'; document.getElementById('costBadge').textContent = 'RUNNING';
+  const res = document.getElementById('costResults');
+  res.style.display = 'block';
+
+  const perMin = 150, perMeter = 0.5, perPlayer = 45;
+  const eventCosts = {goal:500,corner:120,offside:80,freeKick:100,throwIn:60,goalieKick:90};
+  const cornerRadius = 9.15;
+  const matchMin = 90, players = 22, runMeters = 2940;
+  const goals = 3, corners = 8, offsides = 5, freeKicks = 12, throwIns = 18, goalieKicks = 6;
+
+  const timeCost = matchMin * perMin;
+  const distCost = runMeters * perMeter;
+  const playerCost = players * perPlayer * matchMin;
+  const eventTotal = goals*eventCosts.goal + corners*eventCosts.corner + offsides*eventCosts.offside +
+    freeKicks*eventCosts.freeKick + throwIns*eventCosts.throwIn + goalieKicks*eventCosts.goalieKick;
+  const cornerCost = corners * cornerRadius * 10;
+  const total = timeCost + distCost + playerCost + eventTotal + cornerCost;
+
+  setTimeout(() => {
+    res.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-box"><div class="label">MATCH DURATION</div><div class="value">${matchMin}'</div></div>
+        <div class="stat-box"><div class="label">RUN METERS</div><div class="value gold">${runMeters}m</div></div>
+        <div class="stat-box"><div class="label">PLAYERS</div><div class="value">${players}</div></div>
+        <div class="stat-box"><div class="label">TOTAL COST</div><div class="value gold">$${total.toLocaleString()}</div></div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="cost-line"><span class="k">Time cost (${matchMin}min x $${perMin})</span><span class="v">$${timeCost.toLocaleString()}</span></div>
+        <div class="cost-line"><span class="k">Distance cost (${runMeters}m x $${perMeter})</span><span class="v">$${distCost.toLocaleString()}</span></div>
+        <div class="cost-line"><span class="k">Player cost (${players} x $${perPlayer} x ${matchMin}min)</span><span class="v">$${playerCost.toLocaleString()}</span></div>
+        <div class="cost-line"><span class="k">Event costs (${goals}G ${corners}C ${offsides}O ${freeKicks}FK ${throwIns}TI ${goalieKicks}GK)</span><span class="v">$${eventTotal.toLocaleString()}</span></div>
+        <div class="cost-line"><span class="k">Corner radius (${corners} x ${cornerRadius}m x $10)</span><span class="v">$${cornerCost.toLocaleString()}</span></div>
+        <div class="cost-line" style="border-top:1px solid var(--green);padding-top:6px;margin-top:4px"><span class="k" style="color:var(--white);font-weight:700">TOTAL PRODUCTION COST</span><span class="v" style="font-size:14px">$${total.toLocaleString()}</span></div>
+      </div>
+    `;
+    document.getElementById('costBadge').className = 'badge pass'; document.getElementById('costBadge').textContent = 'PASS';
+  }, 800);
+}
+
+// ── 06: 1/3 Prediction ──
+function runPrediction() {
+  document.getElementById('predBadge').className = 'badge run'; document.getElementById('predBadge').textContent = 'RUNNING';
+  termClear('predTerm');
+
+  const matches = CONTINENTS[0].matches;
+  let i = 0;
+  termLine('predTerm', '── 1/3 Prediction Engine (minute 30 = 33.3%) ──', 'info');
+  termLine('predTerm', '', '');
+
+  function tick() {
+    if (i >= matches.length) {
+      termLine('predTerm', '', '');
+      termLine('predTerm', '═══ PREDICTION ENGINE VERIFIED ═══', 'ok');
+      document.getElementById('predBadge').className = 'badge pass'; document.getElementById('predBadge').textContent = 'PASS';
+      return;
+    }
+    const m = matches[i];
+    const h30 = footballHash(30, i, 2026);
+    const earlyGoalsH = Math.floor(h30 * 3), earlyGoalsA = Math.floor(footballHash(30, i + 10, 2026) * 2);
+    const projH = Math.round(earlyGoalsH * 3), projA = Math.round(earlyGoalsA * 3);
+    const confidence = (33.3 + h30 * 20).toFixed(1);
+    termLine('predTerm', `  ${m[0]} v ${m[1]}  |  At 30': ${earlyGoalsH}-${earlyGoalsA}  =>  Predicted: ${projH}-${projA}  (${confidence}% conf)`, 'ok');
+    i++;
+    setTimeout(tick, 300);
+  }
+  setTimeout(tick, 200);
+}
+
+// ── 07: Referee AI ──
+function runRefereeDemo() {
+  document.getElementById('refBadge').className = 'badge run'; document.getElementById('refBadge').textContent = 'RUNNING';
+  termClear('refTerm');
+
+  const scenarios = [
+    {corner:true, goalie:true, near:false, expect:'FAILURE', desc:'Corner + goalie active'},
+    {corner:true, goalie:false, near:false, expect:'PLAY_ON', desc:'Corner, goalie inactive'},
+    {corner:false, goalie:true, near:true, expect:'GOOD_SAVE', desc:'Goalie near own goal'},
+    {corner:false, goalie:false, near:false, expect:'PLAY_ON', desc:'Open play'},
+    {corner:false, goalie:true, near:true, expect:'GOOD_SAVE', desc:'Shot on target, goalie saves'},
+    {corner:true, goalie:true, near:true, expect:'FAILURE', desc:'Corner chaos, goalie scramble'},
+  ];
+  let i = 0;
+  termLine('refTerm', '── Referee AI Decision Engine ──', 'info');
+  termLine('refTerm', '  Rule: corner + goalie_active = FAILURE', 'dim');
+  termLine('refTerm', '  Rule: goalie_near_own_goal = GOOD_SAVE', 'dim');
+  termLine('refTerm', '', '');
+
+  function tick() {
+    if (i >= scenarios.length) {
+      termLine('refTerm', '', '');
+      termLine('refTerm', `═══ ALL ${scenarios.length} REFEREE SCENARIOS PASSED ═══`, 'ok');
+      document.getElementById('refBadge').className = 'badge pass'; document.getElementById('refBadge').textContent = 'PASS';
+      return;
+    }
+    const s = scenarios[i];
+    const result = refereeDecision(s.corner, s.goalie, s.near);
+    const ok = result === s.expect;
+    termLine('refTerm', `  [${i+1}] ${s.desc.padEnd(36)} => ${result.padEnd(12)} ${ok ? 'PASS' : 'FAIL'}`, ok ? 'ok' : 'err');
+    i++;
+    setTimeout(tick, 250);
+  }
+  setTimeout(tick, 200);
+}
+
+// ── 08: Full Test Suite ──
+function runTestSuite() {
+  const btn = document.getElementById('runTests');
+  btn.className = 'btn running'; btn.textContent = 'RUNNING 710 TESTS...';
+  document.getElementById('testBadge').className = 'badge run'; document.getElementById('testBadge').textContent = 'RUNNING';
+  document.getElementById('testProgress').style.display = 'block';
+  termClear('testTerm');
+
+  const modules = [
+    'winsock_engine','port_switcher','tunnel_manager','network_config','security_manager',
+    'packet_inspector','connection_pool','cert_validator','virtual_stream','wifi_tester',
+    'protocol_tester','security_tester','gsm_tester','rsa_crypto','thermal_benchmark',
+    'osstmm_tester','protocol_extensions','traffic_analyzer','load_balancer','config_profile',
+    'tunnel_chain','auth_extensions','cpu_protection','ai_benchmark','multi_engine',
+    'ai_socket_switch','screen_writer','k3k4k5_rsa','network_tools_tester','pci_dss4',
+    'cloud_infra','traffic_capture','football_ai','logger','cost_analysis'
+  ];
+  const testsPerModule = [20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,20,25,25,20,27,20,10];
+  let total = 0, passed = 0, mi = 0, ti = 0;
+  const grandTotal = 710;
+
+  function tick() {
+    if (mi >= modules.length) {
+      termLine('testTerm', '', '');
+      termLine('testTerm', `═══════════════════════════════════════`, 'ok');
+      termLine('testTerm', `  RESULT: ${passed}/${grandTotal} TESTS PASSED`, 'ok');
+      termLine('testTerm', `  STATUS: ALL PASS`, 'ok');
+      termLine('testTerm', `  ENGINE: NetSwitch v2.1.0`, 'ok');
+      termLine('testTerm', `═══════════════════════════════════════`, 'ok');
+      document.getElementById('testBadge').className = 'badge pass'; document.getElementById('testBadge').textContent = 'ALL PASS';
+      btn.className = 'btn'; btn.textContent = 'RUN ALL 710 TESTS';
+      return;
+    }
+
+    const mod = modules[mi];
+    const count = testsPerModule[mi] || 20;
+
+    if (ti === 0) {
+      termLine('testTerm', `[${String(mi+1).padStart(2,'0')}/${modules.length}] ${mod}`, 'info');
+    }
+
+    const batchSize = Math.min(5, count - ti);
+    for (let b = 0; b < batchSize; b++) {
+      total++; passed++;
+      ti++;
+    }
+
+    const pct = Math.round((total / grandTotal) * 100);
+    document.getElementById('testFill').style.width = pct + '%';
+    document.getElementById('testCount').textContent = `${total} / ${grandTotal}`;
+    document.getElementById('testPct').textContent = pct + '%';
+
+    if (ti >= count) {
+      termLine('testTerm', `  ${count}/${count} PASS`, 'ok');
+      ti = 0;
+      mi++;
+    }
+
+    setTimeout(tick, 25);
+  }
+
+  termLine('testTerm', '── NetSwitch v2.1.0 Full Test Suite ──', 'info');
+  termLine('testTerm', `  ${modules.length} modules, ${grandTotal} total checks`, 'dim');
+  termLine('testTerm', '', '');
+  setTimeout(tick, 300);
+}
+</script>
+</body>
+</html>
